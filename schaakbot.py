@@ -883,18 +883,6 @@ def readFileInfo(filename):
     
     return fileInfo
 
-#Method creates one sentence from retrieved input
-def retrieveArgs(args):
-
-    target = args[0]
-    for i in range(1, len(args), 1):
-        target += " " + args[i]
-    
-    return target
-
-def updateGroupPlayer(dictionary, player, win, draw, lose):
-    pass
-
 #Method writes information to filename
 def writeFileInfo(filename, information):
 
