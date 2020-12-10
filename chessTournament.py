@@ -23,6 +23,7 @@ class ChessTournament(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        self.__createNecessaryFiles()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -34,11 +35,11 @@ class ChessTournament(commands.Cog):
     #                                                                                                  #
     ####################################################################################################
 
-
     # signup: Command lets a user sign up for the competition
     @commands.command()
+    @commands.has_guild_permissions(administrator=True)
     async def signup(self, ctx, *, target):
-        pass
+
         #Get current player list
         usersInfo = filehandler.readFileInfo(usersFile)
         
@@ -56,6 +57,7 @@ class ChessTournament(commands.Cog):
 
     # signout: Command lets a user sign out of the competition
     @commands.command()
+    @commands.has_guild_permissions(administrator=True)
     async def signout(self, ctx, *, target):
 
         usersInfo = filehandler.readFileInfo(usersFile)
@@ -70,6 +72,7 @@ class ChessTournament(commands.Cog):
     
     # allPlayers: Command shows all players in users.json (all signed up players)
     @commands.command()
+    @commands.has_guild_permissions(administrator=True)
     async def players(self, ctx):
 
         #Get players
@@ -112,7 +115,7 @@ class ChessTournament(commands.Cog):
 
         #Check function: 
         def checkResponse(reaction, user):
-            return reaction.emoji in self.emojiHandler.getPageEmojis() and reaction.message.id == sendEmbed.id and user == ctx.message.author
+            return reaction.emoji in self.emojiHandler.getPageEmojis() and reaction.message.id == sendEmbed.id
 
         #React to emote interaction when necessary
         while True:
@@ -123,29 +126,32 @@ class ChessTournament(commands.Cog):
                 break
             else:
 
-                page = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
-                lowAmount = page * shownPlayers
-                maxAmount = lowAmount + shownPlayers
+                newPage = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
+                if page != newPage:
+                    page = newPage
 
-                embedPlayers.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
-                embedPlayers.clear_fields()
+                    lowAmount = page * shownPlayers
+                    maxAmount = lowAmount + shownPlayers
 
-                valueField = ""
+                    embedPlayers.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
+                    embedPlayers.clear_fields()
 
-                #Check if current page is not max page
-                if maxAmount < len(userKeys):
-                    maxRange = maxAmount
-                else: #max page
-                    maxRange = len(userKeys)
-                    
-                for i in range(lowAmount, maxRange, 1):
-                    valueField += f'{i + 1}' + ": " + usersInfo[userList][userKeys[i]]["name"] + "\n"
-                embedPlayers.add_field(name=nameField, value=valueField, inline=False)
+                    valueField = ""
 
-                #Edit embed message
-                await sendEmbed.edit(embed=embedPlayers)
+                    #Check if current page is not max page
+                    if maxAmount < len(userKeys):
+                        maxRange = maxAmount
+                    else: #max page
+                        maxRange = len(userKeys)
+                        
+                    for i in range(lowAmount, maxRange, 1):
+                        valueField += f'{i + 1}' + ": " + usersInfo[userList][userKeys[i]]["name"] + "\n"
+                    embedPlayers.add_field(name=nameField, value=valueField, inline=False)
 
-               #Delete emoji, but only when not in DM Channel (because DM channel does not allow that)
+                    #Edit embed message
+                    await sendEmbed.edit(embed=embedPlayers)
+
+                #Delete emoji, but only when not in DM Channel (because DM channel does not allow that)
                 if ctx.message.channel.type != discord.ChannelType.private:
                     await sendEmbed.remove_reaction(reaction.emoji, ctx.message.author)
 
@@ -195,7 +201,7 @@ class ChessTournament(commands.Cog):
 
         #Check function: 
         def checkResponse(reaction, user):
-            return reaction.emoji in self.emojiHandler.getPageEmojis() and reaction.message.id == sendEmbed.id and user == ctx.message.author
+            return reaction.emoji in self.emojiHandler.getPageEmojis() and reaction.message.id == sendEmbed.id
 
         #React to emote interaction when necessary
         while True:
@@ -205,34 +211,37 @@ class ChessTournament(commands.Cog):
                 print("no response")
             else:
 
-                page = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
-                embedGroups.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
+                newPage = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
+                if page != newPage:
+                    page = newPage
 
-                #Initialize embed, which makes a nice looking window
-                embedGroups.title = groupListKeys[page]
-                embedGroups.description = "All players in " + groupListKeys[page]
-                embedGroups.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
-                embedGroups.clear_fields()
+                    embedGroups.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
 
-                valueFieldPlayers = ""
-                valueFieldWinDrawLose = ""
+                    #Initialize embed, which makes a nice looking window
+                    embedGroups.title = groupListKeys[page]
+                    embedGroups.description = "All players in " + groupListKeys[page]
+                    embedGroups.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
+                    embedGroups.clear_fields()
 
-                #Add first page to the embed
-                playersInGroup = groupsInfo[groupListKeys[page]]["players"]
-                playersInGroupKeys = list(playersInGroup.keys())
+                    valueFieldPlayers = ""
+                    valueFieldWinDrawLose = ""
 
-                for i in range(0, len(playersInGroup), 1):
-                    #Add playerlist
-                    valueFieldPlayers += f"{i + 1}" + ": " + playersInGroup[playersInGroupKeys[i]]["name"] + "\n"
+                    #Add first page to the embed
+                    playersInGroup = groupsInfo[groupListKeys[page]]["players"]
+                    playersInGroupKeys = list(playersInGroup.keys())
 
-                    #Add win/draws/loses
-                    valueFieldWinDrawLose += str(playersInGroup[playersInGroupKeys[i]]["wins"]) + " - " + str(playersInGroup[playersInGroupKeys[i]]["draws"]) + " - " + str(playersInGroup[playersInGroupKeys[i]]["loses"]) + "\n"
-                
-                embedGroups.add_field(name=nameFieldPlayers, value=valueFieldPlayers, inline=True)
-                embedGroups.add_field(name=nameFieldWinDrawLose, value=valueFieldWinDrawLose, inline=True)
+                    for i in range(0, len(playersInGroup), 1):
+                        #Add playerlist
+                        valueFieldPlayers += f"{i + 1}" + ": " + playersInGroup[playersInGroupKeys[i]]["name"] + "\n"
 
-                #Edit embed message
-                await sendEmbed.edit(embed=embedGroups)
+                        #Add win/draws/loses
+                        valueFieldWinDrawLose += str(playersInGroup[playersInGroupKeys[i]]["wins"]) + " - " + str(playersInGroup[playersInGroupKeys[i]]["draws"]) + " - " + str(playersInGroup[playersInGroupKeys[i]]["loses"]) + "\n"
+                    
+                    embedGroups.add_field(name=nameFieldPlayers, value=valueFieldPlayers, inline=True)
+                    embedGroups.add_field(name=nameFieldWinDrawLose, value=valueFieldWinDrawLose, inline=True)
+
+                    #Edit embed message
+                    await sendEmbed.edit(embed=embedGroups)
 
                 #Delete emoji, but only when not in DM Channel (because DM channel does not allow that)
                 if ctx.message.channel.type != discord.ChannelType.private:
@@ -240,6 +249,7 @@ class ChessTournament(commands.Cog):
 
     # createtourney: Command creates new competition
     @commands.command()
+    @commands.has_guild_permissions(administrator=True)
     async def createtourney(self, ctx, groupAmount):
 
         groupsInfo = filehandler.readFileInfo(groupsFile)
@@ -278,9 +288,9 @@ class ChessTournament(commands.Cog):
 
         if math.floor(len(allUsers) / int(groupAmount)) < 2:
             try:
-                await confidenceCheckMessage.edit(content="Sorry, cannot create groups with atleast 2 players. Please either add more players or a less amount of groups.")
+                await confidenceCheckMessage.edit(content="Sorry, cannot create groups with atleast 2 players. Please either add more players or reduce amount of groups.")
             except:
-                await ctx.send("Sorry, cannot create groups with atleast 2 players. Please either add more players or a less amount of groups.")
+                await ctx.send("Sorry, cannot create groups with atleast 2 players. Please either add more players or reduce amount of groups.")
             finally:
                 return
 
@@ -324,6 +334,7 @@ class ChessTournament(commands.Cog):
 
     # changestats: Command enables user to change the stats from players in the tournament
     @commands.command()
+    @commands.has_guild_permissions(administrator=True)
     async def changestats(self, ctx):
 
         groupsInfo = filehandler.readFileInfo(groupsFile)
@@ -394,7 +405,7 @@ class ChessTournament(commands.Cog):
         await self.emojiHandler.addEmojis(self.emojiHandler.getWinDrawLoseEmojis(), playerEmbed)
 
         def checkReaction(reaction, user):
-            if user != ctx.message.author:
+            if not user.guild_permissions.administrator:
                 return False
             elif reaction.message.id == playerListEmbed.id and (reaction.emoji in self.emojiHandler.getPageEmojis() or reaction.emoji in self.emojiHandler.getNumberEmojis()):
                 return True
@@ -410,39 +421,41 @@ class ChessTournament(commands.Cog):
             try:
                 reaction, user = await self.client.wait_for("reaction_add", check=checkReaction, timeout=None)
             except:
-                await ctx.send("Oops, something went wrong, please try again!")
-                break
+                print("Oops, something went wrong")
             else:
                 if reaction.emoji in self.emojiHandler.getPageEmojis():
-                    page = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
+                    newPage = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
                     
-                    embedPlayerslist.clear_fields()
-                    embedPlayerslist.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
-                    
-                    lowPlayer = page * shownPlayers
-                    maxPlayer = lowPlayer + shownPlayers
+                    if page != newPage:
+                        page = newPage
 
-                    valueFieldPlayers = ""
-                    valueFieldGroups = ""
-                    valueFieldWinDrawLose = ""
+                        embedPlayerslist.clear_fields()
+                        embedPlayerslist.set_footer(text="page: " + str(page + 1) + " of " + str(maxPage + 1))
+                        
+                        lowPlayer = page * shownPlayers
+                        maxPlayer = lowPlayer + shownPlayers
 
-                    #Add new page to the embed
-                    if maxPlayer < len(playerListKeys):
-                        maxRange = maxPlayer
-                    else:
-                        maxRange = len(playerListKeys)
+                        valueFieldPlayers = ""
+                        valueFieldGroups = ""
+                        valueFieldWinDrawLose = ""
 
-                    for i in range(lowPlayer, maxRange, 1):
-                        valueFieldPlayers += f"{i + 1}" + ": " + playerListKeys[i] + "\n"
-                        valueFieldGroups += allPlayers[playerListKeys[i]]["group"] + "\n"
-                        valueFieldWinDrawLose += str(allPlayers[playerListKeys[i]]["wins"]) + " - " + str(allPlayers[playerListKeys[i]]["draws"]) + " - " + str(allPlayers[playerListKeys[i]]["loses"]) + "\n"
+                        #Add new page to the embed
+                        if maxPlayer < len(playerListKeys):
+                            maxRange = maxPlayer
+                        else:
+                            maxRange = len(playerListKeys)
 
-                    embedPlayerslist.add_field(name=nameFieldPlayers, value=valueFieldPlayers, inline=True)
-                    embedPlayerslist.add_field(name=nameFieldGroups, value=valueFieldGroups, inline=True)
-                    embedPlayerslist.add_field(name=nameFieldWinDrawLose, value=valueFieldWinDrawLose, inline=True)
+                        for i in range(lowPlayer, maxRange, 1):
+                            valueFieldPlayers += f"{i + 1}" + ": " + playerListKeys[i] + "\n"
+                            valueFieldGroups += allPlayers[playerListKeys[i]]["group"] + "\n"
+                            valueFieldWinDrawLose += str(allPlayers[playerListKeys[i]]["wins"]) + " - " + str(allPlayers[playerListKeys[i]]["draws"]) + " - " + str(allPlayers[playerListKeys[i]]["loses"]) + "\n"
 
-                    #Edit fields and remove reaction
-                    await playerListEmbed.edit(embed=embedPlayerslist)
+                        embedPlayerslist.add_field(name=nameFieldPlayers, value=valueFieldPlayers, inline=True)
+                        embedPlayerslist.add_field(name=nameFieldGroups, value=valueFieldGroups, inline=True)
+                        embedPlayerslist.add_field(name=nameFieldWinDrawLose, value=valueFieldWinDrawLose, inline=True)
+
+                        #Edit fields and remove reaction
+                        await playerListEmbed.edit(embed=embedPlayerslist)
 
                     #Delete emoji, but only when not in DM Channel (because DM channel does not allow that)
                     if ctx.message.channel.type != discord.ChannelType.private:
@@ -537,10 +550,11 @@ class ChessTournament(commands.Cog):
 
     # reset: deletes all users from users.json and all groups from groups.json
     @commands.command()
+    @commands.has_guild_permissions(administrator=True)
     async def reset(self, ctx):
 
         #Ask if the user is confident in deleting all the information
-        confidenceCheckMessage = await ctx.send("Are you sure you want to delete all users and groups?")
+        confidenceCheckMessage = await ctx.send("Would you like to delete all users?")
         await self.emojiHandler.addEmojis(self.emojiHandler.getAnswerEmojis(), confidenceCheckMessage)
 
         #Check function - original author can only answer
@@ -551,6 +565,7 @@ class ChessTournament(commands.Cog):
             reaction, user = await self.client.wait_for("reaction_add", check=checkConfidence, timeout=20)
         except:
             await ctx.send("Timed out. Please try again.")
+            return
         else:   
             if self.emojiHandler.processAnswerEmoji(reaction.emoji):
                 #users.json
@@ -558,14 +573,28 @@ class ChessTournament(commands.Cog):
                 usersInfo[userList] = {}
                 filehandler.writeFileInfo(usersFile, usersInfo)
 
+                await confidenceCheckMessage.edit(content="Ok, I deleted all users.")
+            else:
+                await confidenceCheckMessage.edit(content="Ok, I will not delete the users.")
+        
+        confidenceCheckMessage = await ctx.send("Would you like to delete all current groups?")
+        await self.emojiHandler.addEmojis(self.emojiHandler.getAnswerEmojis(), confidenceCheckMessage)
+
+        try:
+            reaction, user = await self.client.wait_for("reaction_add", check=checkConfidence, timeout=20)
+        except:
+            await ctx.send("Timed out. Please try again.")
+            return
+        else:
+            if self.emojiHandler.processAnswerEmoji(reaction.emoji):
                 #groups.json
                 groupsInfo = {}
                 groupsInfo[groupsList] = {}
                 filehandler.writeFileInfo(groupsFile, groupsInfo)
 
-                await confidenceCheckMessage.edit(content="Ok, I deleted all users and groups!")
+                await confidenceCheckMessage.edit(content="Ok, I deleted all groups.")
             else:
-                await confidenceCheckMessage.edit(content="Ok, I will leave it then.")
+                await confidenceCheckMessage.edit(content="Ok, I will not delete the groups.")
 
     ####################################################################################################
     #                                                                                                  #
@@ -573,6 +602,26 @@ class ChessTournament(commands.Cog):
     #                                                                                                  #
     ####################################################################################################
     
+    #Method which creates the files necessary to create a tournament (users.json and groups.json)
+    def __createNecessaryFiles(self):
+        
+        #Create necessary files (if they are not present)
+        #File with users
+        try:
+            usersInfo = filehandler.readFileInfo(usersFile)
+        except:
+            usersInfo = {}
+            usersInfo[userList] = {}
+            filehandler.writeFileInfo(usersFile, usersInfo)
+        
+        #File with groups
+        try:
+            groupsInfo = filehandler.readFileInfo(groupsFile)
+        except:
+            groupsInfo = {}
+            groupsInfo[groupsList] = {}
+            filehandler.writeFileInfo(groupsFile, groupsInfo)
+
     #Method creates a new user in the dictionary
     def __createUser(self, name, dictionary):
 
@@ -658,7 +707,7 @@ class ChessTournament(commands.Cog):
 
         return copyList
 
-    #Method merges 2 player lists together in hierarchy
+    #Method merges 2 player lists together in the hierarchy
     def __mergeSortPlayers(self, listOfPlayers, leftIndex, rightIndex):
         
         #When index meet each other, return

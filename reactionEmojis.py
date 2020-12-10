@@ -30,7 +30,7 @@ class ReactionEmojis():
     __emojiNumbers = [__oneEmote, __twoEmote, __threeEmote, __fourEmote, __fiveEmote, __sixEmote, __sevenEmote, __eightEmote, __nineEmote, __tenEmote]
 
     #Emotes to give wins/draws/loses to players
-    __winUp = "✅"
+    __winUp = "✅" 
     __winDown = "❎"
     __drawUp = "⬜"
     __drawDown = "🔳"
@@ -64,8 +64,10 @@ class ReactionEmojis():
             return currentPage - 1
         elif emoji == self.__nextPageEmote and currentPage < maxPageNr:
             return currentPage + 1
-        else:
+        elif emoji == self.__endPageEmote:
             return maxPageNr
+        else:
+            return currentPage
 
     #Returns emojiAnswers
     def getAnswerEmojis(self):

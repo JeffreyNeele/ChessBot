@@ -25,8 +25,68 @@ class General(commands.Cog):
     # help: Command which gives an explanation for what each command does
     async def help(self, ctx):
 
-        embedList = []
+        try:
+            if ctx.message.author.guild_permissions.administrator:
+                embedList, page, maxPage = self.createAdministratorHelp()
+            else:
+                embedList, page, maxPage = self.createGeneralHelp()
+        except:
+            embedList, page, maxPage = self.createGeneralHelp()
 
+        embedHelp = embedList[page]
+        sendEmbed = await ctx.send(embed=embedHelp)
+
+        #Add necessary reactions to the embed
+        await self.emojiHandler.addEmojis(self.emojiHandler.getPageEmojis(), sendEmbed)
+
+        #Check function: 
+        def checkResponse(reaction, user):
+            return reaction.emoji in self.emojiHandler.getPageEmojis() and reaction.message.id == sendEmbed.id
+
+        #React to emote interaction when necessary
+        while True:
+            try:
+                reaction, user = await self.client.wait_for("reaction_add", check=checkResponse, timeout=None)
+            except:
+                print("no response")
+                break
+            else:
+                
+                newPage = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
+                if page != newPage:
+                    page = newPage
+                    embedHelp = embedList[page]
+
+                    #Edit embed message
+                    await sendEmbed.edit(embed=embedHelp)
+                
+                #Delete emoji, but only when not in DM Channel (because DM channel does not allow that)
+                if ctx.message.channel.type != discord.ChannelType.private:
+                    await sendEmbed.remove_reaction(reaction.emoji, ctx.message.author)
+    
+    # announce: Command which announces a message to the announcement of the "Black Sprites" server
+    @commands.command()
+    @commands.has_guild_permissions(administrator=True)
+    async def announce(self, ctx, *, message):
+
+        channel = discord.utils.get(ctx.guild.text_channels, name="announcements")
+        try:
+            attachment = await ctx.message.attachments[0].to_file()
+            await channel.send(message, file=attachment)
+        except: #The announcement does not contain an image
+            await channel.send(message)
+    
+    ####################################################################################################
+    #                                                                                                  #
+    # ASSISTING METHODS                                                                                #
+    #                                                                                                  #
+    ####################################################################################################
+
+    #Help - seen bij users with administrator permission
+    def createAdministratorHelp(self):
+
+        prefixCommands = self.client.command_prefix
+        embedList = []
         startPage = self.globalHandler.initializeEmbed(title="Welcome to the help guide", description="Here you will find table of content for the command pages")
         embedList.append(startPage)
         count = 1
@@ -38,7 +98,7 @@ class General(commands.Cog):
 
         firstPage = self.globalHandler.initializeEmbed(title="General commands", description="Commands useful anytime")
         for command in list(firstPageCommands.keys()):
-            firstPage.add_field(name=f"{count}" + ": " + command, value=firstPageCommands[command], inline=False)
+            firstPage.add_field(name=f"{count}" + ": " + prefixCommands + command, value=firstPageCommands[command], inline=False)
             count += 1
         embedList.append(firstPage)
 
@@ -52,7 +112,7 @@ class General(commands.Cog):
 
         secondPage = self.globalHandler.initializeEmbed(title="Before creating a tournament", description="Commands useful before creating a tournament")
         for command in list(secondPageCommands.keys()):
-            secondPage.add_field(name=f"{count}" + ": " + command, value=secondPageCommands[command], inline=False)
+            secondPage.add_field(name=f"{count}" + ": " + prefixCommands + command, value=secondPageCommands[command], inline=False)
             count += 1
         embedList.append(secondPage)
 
@@ -65,7 +125,7 @@ class General(commands.Cog):
 
         thirdPage = self.globalHandler.initializeEmbed(title="During a tournament", description="Commands useful during a tournament")
         for command in list(thirdPageCommands.keys()):
-            thirdPage.add_field(name=f"{count}" + ": " + command, value=thirdPageCommands[command], inline=False)
+            thirdPage.add_field(name=f"{count}" + ": " + prefixCommands + command, value=thirdPageCommands[command], inline=False)
             count += 1
         
         embedList.append(thirdPage)
@@ -85,46 +145,33 @@ class General(commands.Cog):
         maxPage = len(embedList) - 1
         for i in range(0, len(embedList), 1):
             embedList[i].set_footer(text="page: " + str(i) + " of " + str(maxPage))
+        
+        return embedList, page, maxPage
 
-        embedHelp = embedList[page]
-        sendEmbed = await ctx.send(embed=embedHelp)
+    #Help - only seen by non-administrator users
+    def createGeneralHelp(self):
+        prefixCommands = self.client.command_prefix
+        embedList = []
+        count = 1
 
-        #Add necessary reactions to the embed
-        await self.emojiHandler.addEmojis(self.emojiHandler.getPageEmojis(), sendEmbed)
+        firstPageCommands = {
+            "groups" : "Show all groups of the current tournament."
+        }
 
-        #Check function: 
-        def checkResponse(reaction, user):
-            return reaction.emoji in self.emojiHandler.getPageEmojis() and reaction.message.id == sendEmbed.id and user == ctx.message.author
+        firstPage = self.globalHandler.initializeEmbed(title="Help", description="Here you will find commands usable by everyone")
+        for command in list(firstPageCommands.keys()):
+            firstPage.add_field(name=f"{count}" + ": " + prefixCommands + command, value=firstPageCommands[command], inline=False)
+            count += 1
+        
+        embedList.append(firstPage)
 
-        #React to emote interaction when necessary
-        while True:
-            try:
-                reaction, user = await self.client.wait_for("reaction_add", check=checkResponse, timeout=None)
-            except:
-                print("no response")
-                break
-            else:
-                
-                page = self.emojiHandler.processPageEmoji(reaction.emoji, page, maxPage)
-                embedHelp = embedList[page]
-
-                #Edit embed message
-                await sendEmbed.edit(embed=embedHelp)
-                
-                #Delete emoji, but only when not in DM Channel (because DM channel does not allow that)
-                if ctx.message.channel.type != discord.ChannelType.private:
-                    await sendEmbed.remove_reaction(reaction.emoji, ctx.message.author)
-    
-    # announce: Command which announces a message to the announcement of the "Black Sprites" server
-    @commands.command()
-    async def announce(self, ctx, *, message):
-
-        channel = discord.utils.get(ctx.guild.text_channels, name="announcements")
-        try:
-            attachment = await ctx.message.attachments[0].to_file()
-            await channel.send(message, file=attachment)
-        except: #The announcement does not contain an image
-            await channel.send(message)
+        #SET FOOTER OF EMBEDS
+        page = 0
+        maxPage = len(embedList) - 1
+        for i in range(0, len(embedList), 1):
+            embedList[i].set_footer(text="page: " + str(i + 1) + " of " + str(maxPage + 1))
+        
+        return embedList, page, maxPage
 
 def setup(client):
     client.add_cog(General(client))
