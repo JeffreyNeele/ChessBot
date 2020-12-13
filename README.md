@@ -1,2 +1,2 @@
 # ChessBot
-A side-project for fun. ChessBot made with discord.py. The bot allows a user to setup a chess competition (sign up players, create new tournament with groups, assign wins/loses).
+ChessBot is a bot made for discord. The bot allows a user to setup a competition (sign up players, create new tournament with groups, assign wins/loses). At first the bot was made to create a chess competition, but the bot can also be used for different kind of competitions. The bot is made with discord.py.
